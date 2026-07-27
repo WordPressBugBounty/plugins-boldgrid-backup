@@ -2,9 +2,9 @@
 Contributors: boldgrid, joemoto, imh_brad, rramo012, bgnicolepaschen, jamesros161, joe9663, weaponx13, jessecowens
 Tags: backup, cloud backup, database backup, restore, wordpress backup
 Requires at least: 5.0
-Tested up to: 6.9
-Requires PHP: 5.4
-Stable tag: 1.17.2
+Tested up to: 7.0
+Requires PHP: 7.4
+Stable tag: 1.17.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -121,7 +121,7 @@ Have a problem? First, take a look at our [Getting Started](https://www.boldgrid
 
 = Minimum Requirements =
 
-* PHP 5.4 or higher.  PHP 7.4 or higher is recommended.
+* PHP 7.4 or higher.
 * At least one of the following PHP execution functions enabled: "popen", "proc_open", "exec", "shell_exec", "passthru", or "system".
 * A Cron system with the "crontab" utility, or WP Cron.
 * A WP_Filesystem FS_METHOD being "direct".
@@ -132,9 +132,17 @@ Have a problem? First, take a look at our [Getting Started](https://www.boldgrid
 
 == Changelog ==
 
+= 1.17.3 =
+Release Date: Jul 23, 2026
+* Security Update: Harden emergency restore metadata storage and cron restore authentication. Thanks to Jakub Herman for responsibly reporting this issue.
+* Bug Fix: Fix FTP / FTPS disconnect handling on PHP 8.
+* Bug Fix: Fix FTP remote upload status when directory listings include path prefixes.
+* Bug Fix: Fix BoldGrid Library loading when using Composer 2.
+* Bug Fix: Fix early translation loading notices on WordPress 6.7+.
+
 = 1.17.2 =
 Release Date: Mar 11, 2026
-* Security Update: Require a cryptographically random one-time secret alongside the backup_id on the boldgrid_cli_cancel_rollback nopriv AJAX endpoint, preventing unauthenticated attackers from canceling a pending auto-rollback via CRC32 brute-force or discoverable site metadata.
+* Security Update: Increased security for canceling a pending rollback.
 
 = 1.17.1 =
 Release Date: Apr 14, 2025
@@ -960,6 +968,9 @@ Release Date: June 21st, 2016
 * Initial public release.
 
 == Upgrade Notice ==
+
+= 1.17.3 =
+Security update recommended for all users.
 
 = 1.12.0 =
 BoldGrid Backup has become Total Upkeep.  Different name with the same great features.

@@ -1208,11 +1208,10 @@ class Boldgrid_Backup_Admin_Auto_Rollback {
 		$backup_id_match = ! empty( $_GET['backup_id'] ) && $this->core->get_backup_identifier() === sanitize_key( $_GET['backup_id'] );
 
 		$stored_secret  = get_site_option( 'boldgrid_backup_cli_cancel_secret', '' );
-
 		// phpcs:ignore WordPress.CSRF.NonceVerification.Recommended
 		$secret_match = ! empty( $stored_secret ) && ! empty( $_GET['cli_cancel_secret'] ) &&
 			hash_equals( $stored_secret, sanitize_text_field( wp_unslash( $_GET['cli_cancel_secret'] ) ) );
-		
+
 		if ( $backup_id_match && $secret_match ) {
 			$this->cancel();
 			wp_send_json_success( __( 'Rollback canceled', 'boldgrid-backup' ) );
