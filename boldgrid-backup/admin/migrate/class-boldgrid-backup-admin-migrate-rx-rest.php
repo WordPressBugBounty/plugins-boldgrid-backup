@@ -140,18 +140,23 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 		$params = $request->get_params();
 
 		// First, check to see if the user has already been authenticated by the Rest API.
-		if ( is_user_logged_in() && current_user_can( 'administrator' ) ) {
+		if ( is_user_logged_in() && $this->migrate_core->util->user_can_direct_transfer() ) {
 			return true;
 		}
 
 		// If the user is not logged in, check for the user and pass in the request.
-		if ( ! isset( $params['user'] ) && ! isset( $params['pass'] ) ) {
+		if ( empty( $params['user'] ) || empty( $params['pass'] ) || ! is_string( $params['user'] ) || ! is_string( $params['pass'] ) ) {
+			return false;
+		}
+
+		$password = base64_decode( $params['pass'] );
+		if ( false === $password || '' === $password ) {
 			return false;
 		}
 
 		$creds = array(
 			'user_login'    => $params['user'],
-			'user_password' => base64_decode( $params['pass'] ),
+			'user_password' => $password,
 			'remember'      => false,
 		);
 
@@ -163,7 +168,7 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 
 		wp_set_current_user( $user->ID );
 
-		if ( ! current_user_can( 'administrator' ) ) {
+		if ( ! $this->migrate_core->util->user_can_direct_transfer() ) {
 			return false;
 		}
 
@@ -373,10 +378,34 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 			), 200 );
 		}
 
-		$links = explode( ',', $headers['link'] );
-		$wp_json_link = array_filter( $links, function( $link ) {
-			return false !== strpos( $link, 'rel="https://api.w.org/"' );
-		} );
+		// Make sure we have an array of link‐headers.
+		$raw_links = isset( $headers['link'] )
+		    ? (array) $headers['link']
+		    : [];
+		
+		// Flatten all comma-separated links into one array.
+		$all_links = [];
+		foreach ( $raw_links as $header ) {
+		    // explode may yield spaces around each link, so trim().
+		    $parts = array_map( 'trim', explode( ',', $header ) );
+		    $all_links = array_merge( $all_links, $parts );
+		}
+		
+		// Find the first link with rel="https://api.w.org/".
+		$wp_json_link = null;
+		foreach ( $all_links as $link ) {
+		    if ( false !== strpos( $link, 'rel="https://api.w.org/"' ) ) {
+		        $wp_json_link = $link;
+		        break;
+		    }
+		}
+
+		$wp_json_url = '';
+		if ( $wp_json_link ) {
+			if ( preg_match( '/<([^>]+)>/', $wp_json_link, $m ) ) {
+				$wp_json_url = $m[1];
+			}
+		}
 
 		$rest_api_error_response = new WP_REST_Response( array(
 			'error'   => true,
@@ -386,13 +415,9 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 			),
 		), 200 );
 
-		if ( empty( $wp_json_link ) ) {
+		if ( empty( $wp_json_url ) ) {
 			return $rest_api_error_response;
 		}
-
-		preg_match('/<([^>]+)>/', $wp_json_link[0], $matches );
-
-		$wp_json_url = $matches[1];
 
 		$wp_json_response = wp_remote_get(
 			$wp_json_url,
@@ -492,20 +517,17 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 			wp_send_json_error( array( 'message' => esc_html__( 'Invalid transfer ID.', 'boldgrid-backup' ) ) );
 		}
 
-		$transfer_dir = $this->util->get_transfer_dir();
-
-		$source_dir   = $this->util->url_to_safe_directory_name( $transfer['source_site_url'] );
+		$staging = $this->util->get_transfer_staging_dir( $transfer );
+		if ( ! $staging ) {
+			wp_send_json_error( array( 'message' => esc_html__( 'Invalid transfer ID.', 'boldgrid-backup' ) ) );
+		}
 
 		$db_dump_info = $transfer['db_dump_info'];
+		$db_file_name = isset( $db_dump_info['file'] ) ? wp_basename( str_replace( '\\', '/', (string) $db_dump_info['file'] ) ) : '';
+		$db_dump_path = $this->util->transfer_file_path( $staging, $db_file_name );
 
-		$db_file_name = basename( $db_dump_info['file'] );
-
-		$db_dump_path = $transfer_dir . '/' . $source_dir . '/' . $transfer_id . '/' . $db_file_name;
-
-		$deleted = wp_delete_file( $db_dump_path );
-
-		if ( file_exists( $db_dump_path ) ) {
-			$deleted = wp_delete_file( $db_dump_path );
+		if ( $db_dump_path && is_file( $db_dump_path ) ) {
+			wp_delete_file( $db_dump_path );
 		}
 
 		$db_dump_info['status'] = 'pending';
@@ -544,21 +566,27 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 			wp_send_json_error( array( 'message' => esc_html__( 'Invalid transfer ID.', 'boldgrid-backup' ) ) );
 		}
 
-		$transfer_dir = $this->util->get_transfer_dir();
-		$source_dir   = $this->util->url_to_safe_directory_name( $transfer['source_site_url'] );
-		$transfer_dir = $transfer_dir . '/' . $source_dir . '/' . $transfer_id . '/';
-
-		$deleted = $wp_filesystem->delete( $transfer_dir, true );
+		$transfer_dir = $this->util->get_transfer_staging_dir( $transfer );
+		if ( ! is_string( $transfer_dir ) || '' === $transfer_dir ) {
+			$deleted = false;
+		} elseif ( ! file_exists( $transfer_dir ) && ! is_link( $transfer_dir ) ) {
+			$deleted = true;
+		} else {
+			$deleted = $wp_filesystem->delete( $transfer_dir, true );
+		}
 
 		$this->util->cleanup_filelists();
 
-		$files_deleted_from_source = $this->util->rest_post(
-			$transfer, 'delete-transfer-files',
-			array(
-				'transfer_id' => $transfer_id,
-				'dest_url'    => $transfer['dest_site_url'],
-			)
-		);
+		$files_deleted_from_source = false;
+		if ( $deleted ) {
+			$files_deleted_from_source = $this->util->rest_post(
+				$transfer, 'delete-transfer-files',
+				array(
+					'transfer_id' => $transfer_id,
+					'dest_url'    => $transfer['dest_site_url'],
+				)
+			);
+		}
 
 		$this->migrate_core->log->add( 'Files deleted from source: ' . json_encode( $files_deleted_from_source ) );
 
@@ -807,8 +835,8 @@ class Boldgrid_Backup_Admin_Migrate_Rx_Rest {
 			case 'transferring-small-files':
 			case 'transferring-large-files':
 				$progress_data = $this->migrate_core->rx->verify_files( $transfer_id );
-				if ( isset ( $verification_data['error'] ) && $verification_data['error'] ) {
-					wp_send_json_error( array( 'message' => esc_html( $verification_data['message'] ) ) );
+				if ( isset( $progress_data['error'] ) && $progress_data['error'] ) {
+					wp_send_json_error( array( 'message' => esc_html( $progress_data['message'] ) ) );
 				}
 				break;
 			case 'pending-restore':

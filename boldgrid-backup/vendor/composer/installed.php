@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => '__root__',
-        'pretty_version' => '1.17.4',
-        'version' => '1.17.4.0',
-        'reference' => '591e8ff140737a860018e429a845af1a4ddaf3cd',
+        'pretty_version' => '1.17.5',
+        'version' => '1.17.5.0',
+        'reference' => 'a2011263dc5e8ea83f34b0bfaecb1cbd2ae9569a',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         '__root__' => array(
-            'pretty_version' => '1.17.4',
-            'version' => '1.17.4.0',
-            'reference' => '591e8ff140737a860018e429a845af1a4ddaf3cd',
+            'pretty_version' => '1.17.5',
+            'version' => '1.17.5.0',
+            'reference' => 'a2011263dc5e8ea83f34b0bfaecb1cbd2ae9569a',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -38,9 +38,9 @@
             'dev_requirement' => false,
         ),
         'ifsnop/mysqldump-php' => array(
-            'pretty_version' => 'v2.12',
-            'version' => '2.12.0.0',
-            'reference' => '2d3a43fc0c49f23bf7dee392b0dd1f8c799f89d3',
+            'pretty_version' => 'v2.13',
+            'version' => '2.13.0.0',
+            'reference' => 'd328c86e17f3a2d8d45d2c9846bd13b6713dcb20',
             'type' => 'library',
             'install_path' => __DIR__ . '/../ifsnop/mysqldump-php',
             'aliases' => array(),
@@ -65,9 +65,9 @@
             'dev_requirement' => false,
         ),
         'phpseclib/phpseclib' => array(
-            'pretty_version' => '3.0.55',
-            'version' => '3.0.55.0',
-            'reference' => 'db9744e6d47e742b1f974e965ad49bdd041105af',
+            'pretty_version' => '3.0.59',
+            'version' => '3.0.59.0',
+            'reference' => '527959f6f26591d532c07cf1c426585ef7279fa9',
             'type' => 'library',
             'install_path' => __DIR__ . '/../phpseclib/phpseclib',
             'aliases' => array(),
